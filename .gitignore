@@ -1,0 +1,61 @@
+# ---------- Secrets (never commit) ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+secrets/
+*.secret
+credentials
+.aws/
+
+# ---------- Kubernetes ----------
+kubeconfig
+*.kubeconfig
+
+# ---------- Terraform ----------
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.tfstate.lock.info
+# Note: DO commit .terraform.lock.hcl (it pins provider versions)
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# ---------- Helm ----------
+charts/*.tgz
+
+# ---------- macOS ----------
+.DS_Store
+
+# ---------- Editors ----------
+.vscode/
+.idea/
+*.swp
+
+# ---------- Logs ----------
+*.log
