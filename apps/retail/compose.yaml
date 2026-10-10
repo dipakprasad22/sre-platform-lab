@@ -17,6 +17,15 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-
+  catalog:
+    build: ./catalog
+    image: catalog:dev
+    environment:
+      CATALOG_DATABASE_URL: postgresql://catalog:${CATALOG_DB_PASSWORD}@postgres:5432/catalog_db
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
 volumes:
   pgdata:
