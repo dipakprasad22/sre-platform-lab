@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail
+  labels:
+    app.kubernetes.io/part-of: retail
+    # Block pods that run as root or ask for extra privileges in this namespace.
+    pod-security.kubernetes.io/enforce: restricted
