@@ -1,0 +1,11 @@
+# Never send these into the image
+.env
+.env.*
+.venv
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+tests/
+.git
+.DS_Store

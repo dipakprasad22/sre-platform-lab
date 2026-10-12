@@ -27,5 +27,39 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+  valkey:
+    image: valkey/valkey:8
+    command: ["valkey-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkeydata:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  cart:
+    build: ./cart
+    image: cart:dev
+    environment:
+      CART_REDIS_URL: redis://valkey:6379/0
+    ports:
+      - "8002:8000"
+    depends_on:
+      valkey:
+        condition: service_healthy
+
+  payment-mock:
+    build: ./payment-mock
+    image: payment-mock:dev
+    environment:
+      PAYMENT_FAILURE_RATE: "0"
+      PAYMENT_DECLINE_RATE: "0"
+      PAYMENT_LATENCY_MS: "0"
+    ports:
+      - "8004:8000"
 volumes:
   pgdata:
+  valkeydata:
