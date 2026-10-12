@@ -1,4 +1,4 @@
-from fastapi.testclient import TestClient  # type: ignore[import-not-found]  # pyright: ignore[reportMissingImports]
+from fastapi.testclient import TestClient
 
 from app.main import app
 
@@ -46,3 +46,25 @@ def test_decline_is_a_normal_answer():
 def test_missing_idempotency_key_is_rejected():
     r = client.post("/payments", json={"order_id": "o-9", "amount_paise": 100})
     assert r.status_code == 422
+
+
+def test_parallel_requests_with_same_key_charge_only_once():
+    import asyncio
+
+    import httpx
+
+    client.put("/admin/chaos", json={**NORMAL, "latency_ms": 300})
+
+    async def two_at_once():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as ac:
+            body = {"order_id": "o-par", "amount_paise": 500}
+            headers = {"Idempotency-Key": "key-par"}
+            return await asyncio.gather(
+                ac.post("/payments", json=body, headers=headers),
+                ac.post("/payments", json=body, headers=headers),
+            )
+
+    codes = sorted(r.status_code for r in asyncio.run(two_at_once()))
+    client.put("/admin/chaos", json=NORMAL)
+    assert codes == [200, 409]

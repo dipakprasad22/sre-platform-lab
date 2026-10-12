@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.db import create_pool, get_pool
+from app.reservations import router as reservations_router
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="catalog", version="0.1.0", lifespan=lifespan)
+app.include_router(reservations_router)
 
 
 @app.exception_handler(PoolTimeout)

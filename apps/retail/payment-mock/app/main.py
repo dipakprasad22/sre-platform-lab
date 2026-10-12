@@ -3,13 +3,8 @@ import logging
 import random
 import uuid
 
-# pyright: reportMissingImports=false
-try:
-    from pydantic import BaseModel, Field
-except ImportError:  # pragma: no cover
-    from pydantic.v1 import BaseModel, Field
-
 from fastapi import FastAPI, Header, HTTPException
+from pydantic import BaseModel, Field
 
 from app.config import settings
 
@@ -38,6 +33,8 @@ chaos = Chaos(
 # Known limitation: kept in memory, so it only works with ONE replica and is lost
 # on restart. Real payment gateways keep this in a database.
 _results: dict[str, tuple[dict, dict]] = {}
+# Keys whose first request is still being processed.
+_in_progress: set[str] = set()
 
 
 class PaymentRequest(BaseModel):
@@ -93,23 +90,35 @@ async def create_payment(
         log.info("replay for key=%s order=%s", idempotency_key, req.order_id)
         return saved_resp
 
-    # 2. Simulate a slow gateway.
-    if chaos.latency_ms:
-        await asyncio.sleep(chaos.latency_ms / 1000)
+    # 2. Same key is still being processed: refuse, do NOT start a second charge.
+    if idempotency_key in _in_progress:
+        log.warning("key=%s already in progress", idempotency_key)
+        raise HTTPException(
+            status_code=409, detail="a request with this key is in progress"
+        )
+    _in_progress.add(idempotency_key)
+    try:
+        # 3. Simulate a slow gateway.
+        if chaos.latency_ms:
+            await asyncio.sleep(chaos.latency_ms / 1000)
 
-    # 3. Simulate an outage. Nothing is saved, so a retry can still succeed.
-    if random.random() < chaos.failure_rate:
-        log.error("simulated outage for order=%s", req.order_id)
-        raise HTTPException(status_code=503, detail="payment gateway unavailable")
+        # 4. Simulate an outage. Nothing is saved, so a retry can still succeed.
+        if random.random() < chaos.failure_rate:
+            log.error("simulated outage for order=%s", req.order_id)
+            raise HTTPException(status_code=503, detail="payment gateway unavailable")
 
-    # 4. Normal result: the bank approves or declines.
-    status = "declined" if random.random() < chaos.decline_rate else "succeeded"
-    resp = PaymentResult(
-        payment_id=f"pay_{uuid.uuid4().hex[:16]}",
-        order_id=req.order_id,
-        amount_paise=req.amount_paise,
-        status=status,
-    ).model_dump()
-    _results[idempotency_key] = (req.model_dump(), resp)
-    log.info("payment %s order=%s status=%s", resp["payment_id"], req.order_id, status)
-    return resp
+        # 5. Normal result: the bank approves or declines.
+        status = "declined" if random.random() < chaos.decline_rate else "succeeded"
+        resp = PaymentResult(
+            payment_id=f"pay_{uuid.uuid4().hex[:16]}",
+            order_id=req.order_id,
+            amount_paise=req.amount_paise,
+            status=status,
+        ).model_dump()
+        _results[idempotency_key] = (req.model_dump(), resp)
+        log.info(
+            "payment %s order=%s status=%s", resp["payment_id"], req.order_id, status
+        )
+        return resp
+    finally:
+        _in_progress.discard(idempotency_key)
