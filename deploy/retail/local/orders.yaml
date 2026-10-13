@@ -1,0 +1,32 @@
+image:
+  repository: orders
+
+env:
+  - name: ORDERS_DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: orders-db
+        key: database-url
+  - name: ORDERS_CATALOG_URL
+    value: http://catalog
+  - name: ORDERS_CART_URL
+    value: http://cart
+  - name: ORDERS_PAYMENT_URL
+    value: http://payment-mock
+
+cronJobs:
+  # Every 2 minutes, fix orders stuck in PENDING for more than 60 seconds.
+  - name: orders-reconcile
+    schedule: "*/2 * * * *"
+    image: curlimages/curl:8.11.1
+    runAsUser: 100
+    runAsGroup: 101
+    args:
+      - --fail-with-body
+      - --silent
+      - --show-error
+      - --max-time
+      - "90"
+      - -X
+      - POST
+      - http://orders/internal/orders/reconcile?older_than_seconds=60

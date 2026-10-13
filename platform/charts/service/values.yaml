@@ -1,0 +1,56 @@
+# Defaults for every service. Each service's values file only lists what is different.
+
+# Name of the service. Defaults to the Helm release name (helm install <name> ...).
+nameOverride: ""
+partOf: retail
+
+replicas: 2
+# RollingUpdate: zero downtime. Recreate: stop old pod first (for apps that must never run 2 copies).
+strategy: RollingUpdate
+
+image:
+  repository: ""        # required, set per service
+  tag: dev
+  pullPolicy: IfNotPresent
+
+containerPort: 8000
+
+# Environment variables, written exactly like in a Kubernetes container spec.
+env: []
+
+probes:
+  readinessPath: /readyz
+  livenessPath: /healthz
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+terminationGracePeriodSeconds: 30
+preStopSleepSeconds: 5
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+# Optional database migration, run as a Helm hook BEFORE the new version starts.
+migration:
+  enabled: false
+  image: ""
+  runAsUser: 999
+  runAsGroup: 999
+  command: []
+  env: []
+  configMap: ""
+
+# Optional scheduled jobs.
+# - name: my-job
+#   schedule: "*/5 * * * *"
+#   image: curlimages/curl:8.11.1
+#   args: ["-s", "http://my-service/internal/task"]
+#   runAsUser: 100
+#   runAsGroup: 101
+cronJobs: []

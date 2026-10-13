@@ -1,0 +1,30 @@
+image:
+  repository: catalog
+
+env:
+  - name: CATALOG_DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: catalog-db
+        key: database-url
+
+migration:
+  enabled: true
+  image: postgres:17
+  configMap: catalog-migrations
+  command:
+    - sh
+    - -c
+    - |
+      set -e
+      for f in /migrations/*.sql; do
+        echo "applying $f"
+        psql -v ON_ERROR_STOP=1 -h postgres -U catalog -d catalog_db -f "$f"
+      done
+      echo "all migrations applied"
+  env:
+    - name: PGPASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: catalog-db
+          key: password

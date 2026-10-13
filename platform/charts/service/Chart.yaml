@@ -1,0 +1,5 @@
+apiVersion: v2
+name: service
+description: Standard chart for one stateless HTTP service (Deployment, Service, PDB, optional migration Job and CronJobs).
+type: application
+version: 0.1.0

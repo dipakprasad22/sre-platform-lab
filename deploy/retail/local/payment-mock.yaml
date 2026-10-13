@@ -1,0 +1,17 @@
+# ONE replica on purpose: payment-mock keeps idempotency keys in memory,
+# so two copies would not know about each other's payments.
+replicas: 1
+strategy: Recreate
+pdb:
+  enabled: false
+
+image:
+  repository: payment-mock
+
+env:
+  - name: PAYMENT_FAILURE_RATE
+    value: "0"
+  - name: PAYMENT_DECLINE_RATE
+    value: "0"
+  - name: PAYMENT_LATENCY_MS
+    value: "0"

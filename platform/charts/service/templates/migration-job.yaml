@@ -1,0 +1,56 @@
+{{- if .Values.migration.enabled }}
+# Runs BEFORE the new version is deployed (Helm hook). If it fails, the deploy stops
+# and the old version keeps running. Its pods get their own name label, so the
+# Service never sends user traffic to them.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "service.name" . }}-migrate
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "service.name" . }}-migrate
+    app.kubernetes.io/part-of: {{ .Values.partOf }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    # Delete the previous run just before the next one, so the last run's logs stay readable.
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 6
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "service.name" . }}-migrate
+        app.kubernetes.io/part-of: {{ .Values.partOf }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "service.podSecurityContext" .Values.migration | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ required "migration.image is required" .Values.migration.image }}
+          command:
+            {{- toYaml .Values.migration.command | nindent 12 }}
+          {{- with .Values.migration.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            {{- include "service.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+              readOnly: true
+      volumes:
+        - name: migrations
+          configMap:
+            name: {{ required "migration.configMap is required" .Values.migration.configMap }}
+{{- end }}

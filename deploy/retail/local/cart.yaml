@@ -1,0 +1,7 @@
+replicas: 3
+image:
+  repository: cart
+
+env:
+  - name: CART_REDIS_URL
+    value: redis://valkey:6379/0
